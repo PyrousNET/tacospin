@@ -86,7 +86,6 @@ func (r *Result) ComputeTotal(counter Counter) {
 }
 
 type TacoPageData struct {
-	Class   string
 	Message string
 }
 
@@ -201,7 +200,7 @@ func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		result.ComputeTotal(*counter)
 		jsonBytes, err := json.Marshal(result)
-		data := TacoPageData{Class: "", Message: ""}
+		data := TacoPageData{}
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -215,7 +214,6 @@ func main() {
 			return
 		}
 
-		data.Class = "spin"
 		data.Message = fmt.Sprintf("The mighty taco spins have been observed at %d rotations", result.TotalCount)
 		tmpl.Execute(w, data)
 
