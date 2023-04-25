@@ -1,3 +1,4 @@
+console.log(window.location.host);
 let socket = new WebSocket("ws://" + window.location.host + "/ws")
 
 socket.onopen = () => {
@@ -29,10 +30,14 @@ socket.onmessage = event => {
 
 function StartSpin()
 {
-    socket.send("/start")
+    fetch('/start', {
+        method: 'GET'
+    })
 }
 
 function EndSpin()
 {
-    socket.send("/end")
+    fetch('/end', {
+        method: 'GET'
+    })
 }
