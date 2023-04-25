@@ -122,6 +122,10 @@ func main() {
 
 	// HTTP endpoint for setting the start time
 	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+		if result.Start != 0 && result.End == 0 {
+			http.Error(w, "the mighty taco is already spinning", http.StatusBadRequest)
+			return
+		}
 		counter.Reset()
 
 		result.Restart()
@@ -236,12 +240,24 @@ func (s *Server) sendCounterIncrement(conn *websocket.Conn) {
 		time.Sleep(3 * time.Second)
 		if s.Result.End == 0 && s.Result.Start != 0 {
 			s.Result.ComputeTotal(*s.Counter)
-			result := map[string]uint{
-				"start":       uint(s.Result.Start),
-				"total_count": uint(s.Counter.count + (^uint64(0) * s.Counter.rollovers)),
+
+			jsonResult, err := json.Marshal(s.Result)
+			if err != nil {
+				log.Println("error marshaling result:", err)
+				continue
 			}
 
-			jsonResult, err := json.Marshal(result)
+			err = conn.WriteMessage(websocket.TextMessage, jsonResult)
+			if err != nil {
+				log.Println("error sending WebSocket message:", err)
+				break
+			}
+		}
+
+		if s.Result.End != 0 && s.Result.Start != 0 {
+			s.Result.ComputeTotal(*s.Counter)
+
+			jsonResult, err := json.Marshal(s.Result)
 			if err != nil {
 				log.Println("error marshaling result:", err)
 				continue

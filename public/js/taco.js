@@ -18,8 +18,13 @@ socket.onerror = error => {
 socket.onmessage = event => {
     data = JSON.parse(event.data);
 
-    document.getElementById('tacoImage').classList.add('spin');
-    document.getElementById('messages').innerHTML = "The mighty taco spins have been observed at " + data.total_count + " rotations"
+    if (data.end === 0) {
+        document.getElementById('tacoImage').classList.add('spin');
+        document.getElementById('messages').innerHTML = "The mighty taco spins have been observed at " + data.total_count + " rotations"
+    } else if (data.end !== 0) {
+        document.getElementById('tacoImage').classList.remove('spin');
+        document.getElementById('messages').innerHTML = "The mighty taco has completed its rotations at " + data.total_count + " rotations"
+    }
 
     setTimeout(function() { socket.send("Ack"); }, 5000);
 }
