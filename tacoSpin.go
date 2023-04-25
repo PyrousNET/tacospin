@@ -199,13 +199,7 @@ func main() {
 	// HTTP endpoint for retrieving the current start, end and total
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		result.ComputeTotal(*counter)
-		jsonBytes, err := json.Marshal(result)
 		data := TacoPageData{}
-
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
 		if result.Start == 0 {
 			data.Message = "The mighty taco has not yet started to spin."
@@ -221,7 +215,6 @@ func main() {
 		fmt.Printf(Gray+"%d "+Reset, result.TotalCount)
 		fmt.Println(Green + "rotations." + Reset)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonBytes)
 	})
 
 	fmt.Println(Green + "Server listening on port 8080" + Reset)
