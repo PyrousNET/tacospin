@@ -269,6 +269,26 @@ func (s *Server) sendCounterIncrement(conn *websocket.Conn) {
 				log.Println("error sending WebSocket message:", err)
 				break
 			}
+		} else if s.Result.End != 0 && s.Result.Start != 0 {
+			s.Result.ComputeTotal(*s.Counter)
+			result := map[string]uint{
+				"start":       uint(s.Result.Start),
+				"end":         uint(s.Result.End),
+				"total_count": uint(s.Counter.count + (^uint64(0) * s.Counter.rollovers)),
+			}
+			jsonResult, err := json.Marshal(result)
+			if err != nil {
+				log.Println("error marshaling result:", err)
+				continue
+			}
+
+			err = conn.WriteMessage(websocket.TextMessage, jsonResult)
+			if err != nil {
+				log.Println("error sending WebSocket message:", err)
+				break
+			}
+
+			break
 		}
 	}
 }

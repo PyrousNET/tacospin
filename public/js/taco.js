@@ -18,10 +18,10 @@ socket.onerror = error => {
 socket.onmessage = event => {
     data = JSON.parse(event.data);
 
-    if (data.end === 0) {
+    if (!data.end) {
         document.getElementById('tacoImage').classList.add('spin');
         document.getElementById('messages').innerHTML = "The mighty taco spins have been observed at " + data.total_count + " rotations"
-    } else if (data.end !== 0) {
+    } else {
         document.getElementById('tacoImage').classList.remove('spin');
         document.getElementById('messages').innerHTML = "The mighty taco has completed its rotations at " + data.total_count + " rotations"
     }
