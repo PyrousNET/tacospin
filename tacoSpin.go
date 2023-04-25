@@ -122,6 +122,11 @@ func main() {
 
 	// HTTP endpoint for setting the start time
 	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+		if result.Start != 0 {
+			fmt.Println(Red + "The mighty taco was asked to spin while it was spinning. " + Reset)
+			http.Error(w, "the mighty taco already spins", http.StatusBadRequest)
+			return
+		}
 		counter.Reset()
 
 		result.Restart()
