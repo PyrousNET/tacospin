@@ -1,6 +1,10 @@
 /*
  * Author: Ben Payne [trixtur@gmail.com]
  * Date: 4-24-2023
+ *
+ * CoAuthor: Josh Payne []
+ * Date: 4-24-2023
+ *
  * Description: A simple taco spinning server with web hooks.
  */
 package main
@@ -8,11 +12,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
+	"html/template"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 type Counter struct {
@@ -78,9 +85,8 @@ func (r *Result) ComputeTotal(counter Counter) {
 	r.TotalCount = totalCount
 }
 
-type TimeRange struct {
-	Start int64 `json:"start"`
-	End   int64 `json:"end"`
+type TacoPageData struct {
+	Message string
 }
 
 func main() {
@@ -102,6 +108,8 @@ func main() {
 	server := NewServer(counter)
 	server.Result = result
 
+	tmpl := template.Must(template.ParseFiles("public/taco.html"))
+
 	// Start the daemon in a goroutine
 	go func() {
 		for {
@@ -114,6 +122,11 @@ func main() {
 
 	// HTTP endpoint for setting the start time
 	http.HandleFunc("/start", func(w http.ResponseWriter, r *http.Request) {
+		if result.Start != 0 && result.End == 0 {
+			fmt.Println(Red + "The mighty taco was asked to spin while it was spinning. " + Reset)
+			http.Error(w, "the mighty taco is already spinning", http.StatusBadRequest)
+			return
+		}
 		counter.Reset()
 
 		result.Restart()
@@ -152,25 +165,61 @@ func main() {
 
 	http.HandleFunc("/ws", server.handleWebSocket)
 
-	// HTTP endpoint for retrieving the current start, end and total
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		result.ComputeTotal(*counter)
-		jsonBytes, err := json.Marshal(result)
+	http.HandleFunc("/taco.jpg", func(w http.ResponseWriter, r *http.Request) {
+		buf, err := ioutil.ReadFile("public/taco.jpg")
+
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if result.Start == 0 {
-			http.Error(w, "the mighty taco has not yet started to spin", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "image/jpeg")
+		w.Write(buf)
+	})
+
+	http.HandleFunc("/taco.css", func(w http.ResponseWriter, r *http.Request) {
+		buf, err := ioutil.ReadFile("public/css/taco.css")
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		w.Header().Set("Content-Type", "text/css")
+		w.Write(buf)
+	})
+
+	http.HandleFunc("/taco.js", func(w http.ResponseWriter, r *http.Request) {
+		buf, err := ioutil.ReadFile("public/js/taco.js")
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/javascript")
+		w.Write(buf)
+	})
+
+	// HTTP endpoint for retrieving the current start, end and total
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		result.ComputeTotal(*counter)
+		data := TacoPageData{}
+
+		if result.Start == 0 {
+			data.Message = "The mighty taco has not yet started to spin."
+			tmpl.Execute(w, data)
+			//http.Error(w, "the mighty taco has not yet started to spin", http.StatusBadRequest)
+			return
+		}
+
+		data.Message = fmt.Sprintf("The mighty taco spins have been observed at %d rotations", result.TotalCount)
+		tmpl.Execute(w, data)
 
 		fmt.Print(Green + "The mighty taco spins have been observed at " + Reset)
 		fmt.Printf(Gray+"%d "+Reset, result.TotalCount)
 		fmt.Println(Green + "rotations." + Reset)
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonBytes)
 	})
 
 	fmt.Println(Green + "Server listening on port 8080" + Reset)
@@ -192,12 +241,8 @@ func (s *Server) sendCounterIncrement(conn *websocket.Conn) {
 		time.Sleep(3 * time.Second)
 		if s.Result.End == 0 && s.Result.Start != 0 {
 			s.Result.ComputeTotal(*s.Counter)
-			result := map[string]uint{
-				"start":       uint(s.Result.Start),
-				"total_count": uint(s.Counter.count + (^uint64(0) * s.Counter.rollovers)),
-			}
 
-			jsonResult, err := json.Marshal(result)
+			jsonResult, err := json.Marshal(s.Result)
 			if err != nil {
 				log.Println("error marshaling result:", err)
 				continue
@@ -208,6 +253,24 @@ func (s *Server) sendCounterIncrement(conn *websocket.Conn) {
 				log.Println("error sending WebSocket message:", err)
 				break
 			}
+		}
+
+		if s.Result.End != 0 && s.Result.Start != 0 {
+			s.Result.ComputeTotal(*s.Counter)
+
+			jsonResult, err := json.Marshal(s.Result)
+			if err != nil {
+				log.Println("error marshaling result:", err)
+				continue
+			}
+
+			err = conn.WriteMessage(websocket.TextMessage, jsonResult)
+			if err != nil {
+				log.Println("error sending WebSocket message:", err)
+				break
+			}
+
+			break
 		}
 	}
 }
