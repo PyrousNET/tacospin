@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  taco-spin:
+    build:
+      context: .
+      dockerfile: tacoSpin/Dockerfile
+    container_name: taco-spin
+    ports:
+      - "8080:8080"
+    environment:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+    env_file:
+      - .env
+    restart: unless-stopped
+
