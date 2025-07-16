@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Taco Spin!</title>
+  <style>
+    body {
+      background-color: #222;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    img {
+      width: 200px;
+      transition: transform 0.1s linear;
+    }
+    .rpm {
+      margin-top: 20px;
+      font-size: 1.5em;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌮 Taco Spin!</h1>
+  <img id="taco" src="/static/taco.png" alt="Spinning Taco">
+  <div class="rpm">RPM: <span id="rpm">0</span></div>
+
+  <script>
+    let angle = 0;
+
+    async function fetchRPM() {
+      const res = await fetch('/rpm');
+      const text = await res.text();
+      return parseFloat(text);
+    }
+
+    async function animate() {
+      const rpm = await fetchRPM();
+      document.getElementById('rpm').textContent = rpm.toFixed(2);
+      const degreesPerFrame = rpm * 360 / 60 / 10; // per 100ms
+      angle += degreesPerFrame;
+      document.getElementById('taco').style.transform = `rotate(${angle}deg)`;
+      setTimeout(animate, 100);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

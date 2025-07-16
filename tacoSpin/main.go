@@ -17,6 +17,7 @@ import (
 var (
 	spins      float64
 	spinning   bool
+	rpm        float64
 	mutex      sync.Mutex
 	stopSignal chan bool
 )
@@ -24,70 +25,6 @@ var (
 const (
 	windmillDiameter = 1.0 // in meters
 )
-
-type Clouds struct {
-	All float64 `json:"all"`
-}
-
-type Coord struct {
-	Lat float64 `json:"lat"`
-	Lon float64 `json:"lon"`
-}
-
-type Main struct {
-	Feels_like float64 `json:"feels_like"`
-	Grnd_level float64 `json:"grnd_level"`
-	Humidity float64 `json:"humidity"`
-	Pressure float64 `json:"pressure"`
-	Sea_level float64 `json:"sea_level"`
-	Temp float64 `json:"temp"`
-	Temp_max float64 `json:"temp_max"`
-	Temp_min float64 `json:"temp_min"`
-}
-
-type Sys struct {
-	Country string `json:"country"`
-	Id float64 `json:"id"`
-	Sunrise float64 `json:"sunrise"`
-	Sunset float64 `json:"sunset"`
-	Type float64 `json:"type"`
-}
-
-type WeatherItem struct {
-	Description string `json:"description"`
-	Icon string `json:"icon"`
-	Id float64 `json:"id"`
-	Main string `json:"main"`
-}
-
-type Wind struct {
-	Deg float64 `json:"deg"`
-	Gust float64 `json:"gust"`
-	Speed float64 `json:"speed"`
-}
-
-type Weather struct {
-	Base string `json:"base"`
-	Clouds Clouds `json:"clouds"`
-	Cod float64 `json:"cod"`
-	Coord Coord `json:"coord"`
-	Dt float64 `json:"dt"`
-	Id float64 `json:"id"`
-	Main Main `json:"main"`
-	Name string `json:"name"`
-	Sys Sys `json:"sys"`
-	Timezone float64 `json:"timezone"`
-	Visibility float64 `json:"visibility"`
-	Weather []WeatherItem `json:"weather"`
-	Wind Wind `json:"wind"`
-}
-
-
-type windResponse struct {
-	Current struct {
-		WindSpeed float64 `json:"wind_speed"`
-	} `json:"current"`
-}
 
 func getWindSpeed() (float64, error) {
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
@@ -99,13 +36,13 @@ func getWindSpeed() (float64, error) {
 	}
 	defer resp.Body.Close()
 
-	var data Weather
+	var data map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return 0, err
 	}
 
-	wind := data.Wind
-	return wind.Speed, nil
+	wind := data["wind"].(map[string]interface{})
+	return wind["speed"].(float64), nil
 }
 
 func spinCalculator(windSpeed float64) float64 {
@@ -122,11 +59,6 @@ func startSpinning() {
 	spinning = true
 	stopSignal = make(chan bool)
 	mutex.Unlock()
-    windSpeed, err := getWindSpeed()
-    if err != nil {
-        log.Println("Error getting wind speed:", err)
-        return
-    }
 
 	go func() {
 		ticker := time.NewTicker(1 * time.Second)
@@ -136,9 +68,15 @@ func startSpinning() {
 			case <-stopSignal:
 				return
 			case <-ticker.C:
-				rpm := spinCalculator(windSpeed)
+				windSpeed, err := getWindSpeed()
+				if err != nil {
+					log.Println("Error getting wind speed:", err)
+					continue
+				}
+				rpmVal := spinCalculator(windSpeed)
 				mutex.Lock()
-				spins += rpm / 60.0 // spins per second
+				spins += rpmVal / 60.0
+				rpm = rpmVal
 				mutex.Unlock()
 			}
 		}
@@ -154,9 +92,15 @@ func stopSpinning() {
 	mutex.Unlock()
 }
 
+func serveIndex(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "/app/tacoSpin/static/index.html")
+}
+
 func main() {
 	_ = godotenv.Load()
 	r := chi.NewRouter()
+
+	r.Get("/", serveIndex)
 
 	r.Post("/start", func(w http.ResponseWriter, r *http.Request) {
 		startSpinning()
@@ -175,7 +119,18 @@ func main() {
 		w.Write([]byte(fmt.Sprintf("Total taco spins: %.2f", s)))
 	})
 
+	r.Get("/rpm", func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		rot := rpm
+		mutex.Unlock()
+		w.Write([]byte(fmt.Sprintf("%.2f", rot)))
+	})
+
+	r.Get("/static/{filename}", func(w http.ResponseWriter, r *http.Request) {
+		filename := chi.URLParam(r, "filename")
+		http.ServeFile(w, r, "tacoSpin/static/"+filename)
+	})
+
 	log.Println("Taco spin service started on :8080")
 	http.ListenAndServe(":8080", r)
 }
-

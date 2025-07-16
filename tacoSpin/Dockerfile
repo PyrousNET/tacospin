@@ -16,6 +16,7 @@ FROM gcr.io/distroless/static:nonroot
 # Set working directory and copy the binary from the builder stage
 WORKDIR /tacoSpin
 COPY --from=builder /build/tacoSpin /tacoSpin
+COPY --from=builder /build/tacoSpin/static /app/static
 
 # Run as non-root user (provided by distroless)
 USER nonroot
