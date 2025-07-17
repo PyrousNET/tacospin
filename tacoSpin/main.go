@@ -93,7 +93,7 @@ func stopSpinning() {
 }
 
 func serveIndex(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "/app/tacoSpin/static/index.html")
+	http.ServeFile(w, r, "./static/index.html")
 }
 
 func main() {
@@ -126,10 +126,8 @@ func main() {
 		w.Write([]byte(fmt.Sprintf("%.2f", rot)))
 	})
 
-	r.Get("/static/{filename}", func(w http.ResponseWriter, r *http.Request) {
-		filename := chi.URLParam(r, "filename")
-		http.ServeFile(w, r, "tacoSpin/static/"+filename)
-	})
+    fs := http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))
+    r.Handle("/static/*", fs)
 
 	log.Println("Taco spin service started on :8080")
 	http.ListenAndServe(":8080", r)
