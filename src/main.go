@@ -7,9 +7,9 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
-    "strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -28,33 +28,29 @@ const (
 )
 
 type EntriesItem struct {
-	Humidity string `json:"humidity"`
-	Luminosity string `json:"luminosity"`
-	Name string `json:"name"`
-	Pressure string `json:"pressure"`
-	Rain_1h string `json:"rain_1h"`
-	Rain_24h string `json:"rain_24h"`
-	Rain_mn string `json:"rain_mn"`
-	Temp string `json:"temp"`
-	Time string `json:"time"`
+	Humidity       string `json:"humidity"`
+	Luminosity     string `json:"luminosity"`
+	Name           string `json:"name"`
+	Pressure       string `json:"pressure"`
+	Rain_1h        string `json:"rain_1h"`
+	Rain_24h       string `json:"rain_24h"`
+	Rain_mn        string `json:"rain_mn"`
+	Temp           string `json:"temp"`
+	Time           string `json:"time"`
 	Wind_direction string `json:"wind_direction"`
-	Wind_gust string `json:"wind_gust"`
-	Wind_speed string `json:"wind_speed"`
+	Wind_gust      string `json:"wind_gust"`
+	Wind_speed     string `json:"wind_speed"`
 }
 
 type Weather struct {
-	Command string `json:"command"`
+	Command string        `json:"command"`
 	Entries []EntriesItem `json:"entries"`
-	Found float64 `json:"found"`
-	Result string `json:"result"`
-	What string `json:"what"`
+	Found   float64       `json:"found"`
+	Result  string        `json:"result"`
+	What    string        `json:"what"`
 }
 
-
-func getWindSpeed() (float64, error) {
-	apiKey := os.Getenv("OPENWEATHER_API_KEY")
-	url := fmt.Sprintf("https://api.aprs.fi/api/get?name=GW2066&what=wx&apikey=%s", apiKey)
-
+func getWindSpeed(url string) (float64, error) {
 	resp, err := http.Get(url)
 	if err != nil {
 		return 0, err
@@ -66,14 +62,14 @@ func getWindSpeed() (float64, error) {
 		return 0, err
 	}
 
-    var wind string
-    for _, entry := range data.Entries {
-        wind = entry.Wind_speed
-    }
-    var windSpeed float64
-    if wind != "" {
-        windSpeed, err = strconv.ParseFloat(wind, 64)
-    }
+	var wind string
+	for _, entry := range data.Entries {
+		wind = entry.Wind_speed
+	}
+	var windSpeed float64
+	if wind != "" {
+		windSpeed, err = strconv.ParseFloat(wind, 64)
+	}
 	return windSpeed, nil
 }
 
@@ -83,6 +79,8 @@ func spinCalculator(windSpeed float64) float64 {
 }
 
 func startSpinning() {
+	apiKey := os.Getenv("OPENWEATHER_API_KEY")
+	url := fmt.Sprintf("https://api.aprs.fi/api/get?name=GW2066&what=wx&apikey=%s", apiKey)
 	mutex.Lock()
 	if spinning {
 		mutex.Unlock()
@@ -95,14 +93,14 @@ func startSpinning() {
 	go func() {
 		ticker := time.NewTicker(3 * time.Minute)
 		defer ticker.Stop()
-        spinTicker := time.NewTicker(1 * time.Second)
+		spinTicker := time.NewTicker(1 * time.Second)
 		defer spinTicker.Stop()
 		for {
 			select {
 			case <-stopSignal:
 				return
 			case <-ticker.C:
-				windSpeed, err := getWindSpeed()
+				windSpeed, err := getWindSpeed(url)
 				if err != nil {
 					log.Println("Error getting wind speed:", err)
 					continue
@@ -111,23 +109,23 @@ func startSpinning() {
 				mutex.Lock()
 				rpm = rpmVal
 				mutex.Unlock()
-            case <-spinTicker.C:
+			case <-spinTicker.C:
 				mutex.Lock()
 				spins += rpm / 60.0
 				mutex.Unlock()
 			}
 		}
 	}()
-    windSpeed, err := getWindSpeed()
-    if err != nil {
-        log.Println("Error getting wind speed:", err)
-        return
-    }
-    rpmVal := spinCalculator(windSpeed)
-    mutex.Lock()
-    spins += rpmVal / 60.0
-    rpm = rpmVal
-    mutex.Unlock()
+	windSpeed, err := getWindSpeed(url)
+	if err != nil {
+		log.Println("Error getting wind speed:", err)
+		return
+	}
+	rpmVal := spinCalculator(windSpeed)
+	mutex.Lock()
+	spins += rpmVal / 60.0
+	rpm = rpmVal
+	mutex.Unlock()
 }
 
 func stopSpinning() {
@@ -173,8 +171,8 @@ func main() {
 		w.Write([]byte(fmt.Sprintf("%.2f", rot)))
 	})
 
-    fs := http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))
-    r.Handle("/static/*", fs)
+	fs := http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))
+	r.Handle("/static/*", fs)
 
 	log.Println("Taco spin service started on :8080")
 	http.ListenAndServe(":8080", r)
