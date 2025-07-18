@@ -9,6 +9,7 @@ import (
 	"os"
 	"sync"
 	"time"
+    "strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -26,9 +27,33 @@ const (
 	windmillDiameter = 1.0 // in meters
 )
 
+type EntriesItem struct {
+	Humidity string `json:"humidity"`
+	Luminosity string `json:"luminosity"`
+	Name string `json:"name"`
+	Pressure string `json:"pressure"`
+	Rain_1h string `json:"rain_1h"`
+	Rain_24h string `json:"rain_24h"`
+	Rain_mn string `json:"rain_mn"`
+	Temp string `json:"temp"`
+	Time string `json:"time"`
+	Wind_direction string `json:"wind_direction"`
+	Wind_gust string `json:"wind_gust"`
+	Wind_speed string `json:"wind_speed"`
+}
+
+type Weather struct {
+	Command string `json:"command"`
+	Entries []EntriesItem `json:"entries"`
+	Found float64 `json:"found"`
+	Result string `json:"result"`
+	What string `json:"what"`
+}
+
+
 func getWindSpeed() (float64, error) {
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
-	url := fmt.Sprintf("https://api.openweathermap.org/data/2.5/weather?q=Chicago&appid=%s&units=metric", apiKey)
+	url := fmt.Sprintf("https://api.aprs.fi/api/get?name=GW2066&what=wx&apikey=%s", apiKey)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -36,13 +61,20 @@ func getWindSpeed() (float64, error) {
 	}
 	defer resp.Body.Close()
 
-	var data map[string]interface{}
+	var data Weather
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return 0, err
 	}
 
-	wind := data["wind"].(map[string]interface{})
-	return wind["speed"].(float64), nil
+    var wind string
+    for _, entry := range data.Entries {
+        wind = entry.Wind_speed
+    }
+    var windSpeed float64
+    if wind != "" {
+        windSpeed, err = strconv.ParseFloat(wind, 64)
+    }
+	return windSpeed, nil
 }
 
 func spinCalculator(windSpeed float64) float64 {
