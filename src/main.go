@@ -74,7 +74,6 @@ func getWindSpeed() (float64, error) {
     if wind != "" {
         windSpeed, err = strconv.ParseFloat(wind, 64)
     }
-    log.Printf("Wind Speed is %f.\n", windSpeed)
 	return windSpeed, nil
 }
 

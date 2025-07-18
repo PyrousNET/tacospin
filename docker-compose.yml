@@ -4,7 +4,7 @@ services:
   taco-spin:
     build:
       context: .
-      dockerfile: tacoSpin/Dockerfile
+      dockerfile: src/Dockerfile
     container_name: taco-spin
     ports:
       - "8080:8080"
