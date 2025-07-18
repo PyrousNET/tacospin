@@ -93,7 +93,7 @@ func startSpinning() {
 	mutex.Unlock()
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Second)
+		ticker := time.NewTicker(3 * time.Minute)
 		defer ticker.Stop()
 		for {
 			select {
