@@ -74,12 +74,13 @@ func getWindSpeed() (float64, error) {
     if wind != "" {
         windSpeed, err = strconv.ParseFloat(wind, 64)
     }
+    log.Printf("Wind Speed is %f.\n", windSpeed)
 	return windSpeed, nil
 }
 
 func spinCalculator(windSpeed float64) float64 {
-	// assume RPM = wind speed (m/s) / (pi * D) * 60
-	return windSpeed / (math.Pi * windmillDiameter) * 60.0
+	const TSR = 8.0 // Assume fast-spinning unloaded rotor
+	return (TSR * windSpeed) / (math.Pi * windmillDiameter) * 60.0
 }
 
 func startSpinning() {
@@ -95,6 +96,8 @@ func startSpinning() {
 	go func() {
 		ticker := time.NewTicker(3 * time.Minute)
 		defer ticker.Stop()
+        spinTicker := time.NewTicker(1 * time.Second)
+		defer spinTicker.Stop()
 		for {
 			select {
 			case <-stopSignal:
@@ -107,12 +110,25 @@ func startSpinning() {
 				}
 				rpmVal := spinCalculator(windSpeed)
 				mutex.Lock()
-				spins += rpmVal / 60.0
 				rpm = rpmVal
+				mutex.Unlock()
+            case <-spinTicker.C:
+				mutex.Lock()
+				spins += rpm / 60.0
 				mutex.Unlock()
 			}
 		}
 	}()
+    windSpeed, err := getWindSpeed()
+    if err != nil {
+        log.Println("Error getting wind speed:", err)
+        return
+    }
+    rpmVal := spinCalculator(windSpeed)
+    mutex.Lock()
+    spins += rpmVal / 60.0
+    rpm = rpmVal
+    mutex.Unlock()
 }
 
 func stopSpinning() {
