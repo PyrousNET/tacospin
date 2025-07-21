@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -51,6 +52,10 @@ type Weather struct {
 }
 
 func getWindSpeed(url string) (float64, error) {
+	if url == "" {
+		// return random wind speed if no URL is provided
+		return float64(5 + rand.Intn(15)), nil // Random wind speed between 5 and 20 m/s
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		return 0, err
@@ -79,8 +84,11 @@ func spinCalculator(windSpeed float64) float64 {
 }
 
 func startSpinning() {
+	url := ""
 	apiKey := os.Getenv("OPENWEATHER_API_KEY")
-	url := fmt.Sprintf("https://api.aprs.fi/api/get?name=GW2066&what=wx&apikey=%s", apiKey)
+	if apiKey != "" {
+		url = fmt.Sprintf("https://api.aprs.fi/api/get?name=GW2066&what=wx&apikey=%s", apiKey)
+	}
 	mutex.Lock()
 	if spinning {
 		mutex.Unlock()
