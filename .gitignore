@@ -22,4 +22,3 @@ go.work
 
 # Environment files
 .env
-.env.example
