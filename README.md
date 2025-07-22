@@ -8,7 +8,7 @@ This Go web service simulates a taco spinning in the wind of Chicago. The spin r
 - `/spins`: Returns total spins since start
 
 ## Setup
-1. Create a `.env` file or set `OPENWEATHER_API_KEY` in the environment. This key should actually be an https://aprs.fi api token owned by the user.
+1. Create a `.env` file in the `src/` directory or set `OPENWEATHER_API_KEY` in the environment. This key should actually be an https://aprs.fi api token owned by the user.
 2. Build and run:
    ```bash
    docker-compose up --build
