@@ -8,7 +8,7 @@ COPY . .
 
 # Build a statically linked Linux AMD64 binary
 RUN go mod tidy && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o tacoSpin ./src
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o tacoSpin ./
 
 # === Stage 2: Minimal runtime ===
 FROM gcr.io/distroless/static:nonroot
